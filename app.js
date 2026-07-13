@@ -489,10 +489,60 @@ function addDragHandlers(li) {
 // Export (MP3 / MP4)
 //
 // A browser page can't pull media streams out of YouTube (CORS + signed
-// URLs), so export produces a ready-to-run bash script that uses yt-dlp +
-// ffmpeg to download each clip at its exact timestamps and stitch them into
-// a single mixtape file on the user's machine.
+// URLs). Two paths:
+//   1. If the local helper server (server/mixtape_server.py) is running on
+//      the user's machine, the buttons download the finished mixtape file
+//      directly.
+//   2. Otherwise they download a ready-to-run bash script that does the same
+//      job with yt-dlp + ffmpeg.
 // ---------------------------------------------------------------------------
+
+const HELPER_URL = "http://127.0.0.1:8765";
+let helperAvailable = false;
+
+async function checkHelper() {
+  try {
+    const res = await fetch(`${HELPER_URL}/health`, { signal: AbortSignal.timeout(1500) });
+    const data = await res.json();
+    helperAvailable = data.ok === true && data.service === "mixtape-maker";
+  } catch {
+    helperAvailable = false;
+  }
+  const label = helperAvailable
+    ? "Direct download via the local helper"
+    : "Downloads a yt-dlp script (run the local helper for direct files)";
+  document.getElementById("btn-export-mp3").title = `${label} — MP3`;
+  document.getElementById("btn-export-mp4").title = `${label} — MP4`;
+}
+
+async function directExport(kind) {
+  const btn = document.getElementById(`btn-export-${kind}`);
+  btn.disabled = true;
+  btn.textContent = "⏳ " + kind.toUpperCase();
+  toast(`Building mixtape.${kind} on the local helper — this can take a few minutes…`);
+  try {
+    const payload = {
+      kind,
+      tracks: tracks.map(t => ({ videoId: t.videoId, start: t.start || 0, end: t.end })),
+    };
+    const res = await fetch(`${HELPER_URL}/export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `mixtape.${kind}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`mixtape.${kind} downloaded!`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⬇ " + kind.toUpperCase();
+  }
+}
 
 function sectionArg(t) {
   const start = t.start || 0;
@@ -556,10 +606,18 @@ function downloadText(filename, text) {
   URL.revokeObjectURL(a.href);
 }
 
-function exportMixtape(kind) {
+async function exportMixtape(kind) {
   if (!tracks.length) { toast("Add some tracks first!"); return; }
+  if (helperAvailable) {
+    try {
+      await directExport(kind);
+      return;
+    } catch (e) {
+      toast(`Direct export failed (${e.message}) — downloading the script instead.`);
+    }
+  }
   downloadText(`make-mixtape-${kind}.sh`, buildExportScript(kind));
-  toast(`Script downloaded — run it with yt-dlp + ffmpeg installed to build mixtape.${kind}.`);
+  toast(`Script downloaded — run it with yt-dlp + ffmpeg to build mixtape.${kind}. For one-click downloads, run the local helper (see README).`);
 }
 
 // ---------------------------------------------------------------------------
@@ -653,6 +711,8 @@ document.getElementById("btn-share").addEventListener("click", async () => {
 load();
 renderPlaylist();
 tracks.forEach(t => { if (t.title.startsWith("YouTube video (")) fetchTitle(t); });
+checkHelper();
+setInterval(checkHelper, 15000);
 
 const tag = document.createElement("script");
 tag.src = "https://www.youtube.com/iframe_api";

@@ -18,12 +18,17 @@ mixtape.
   length is probed with a hidden muted player — no API key needed.)
 - **Order control** — drag and drop tracks, or use the ↑ / ↓ buttons; each
   track has a 🗑 remove button.
-- **MP3 / MP4 export** — the ⬇ MP3 / ⬇ MP4 buttons download a ready-to-run
-  bash script (yt-dlp + ffmpeg) that fetches each clip at your exact
-  timestamps and stitches them into a single `mixtape.mp3` / `mixtape.mp4`.
+- **MP3 / MP4 export** — the ⬇ MP3 / ⬇ MP4 buttons build a single
+  `mixtape.mp3` / `mixtape.mp4` from all your clips at their exact timestamps.
   Browsers can't extract media from YouTube directly (CORS + signed streams),
-  so the script runs on your machine instead. Only download content you have
-  the rights to.
+  so there are two modes:
+  - **Direct download** — run the local helper once
+    (see [Direct MP3/MP4 downloads](#direct-mp3--mp4-downloads)) and the
+    buttons return the finished file in one click.
+  - **Script fallback** — without the helper, the buttons download a
+    ready-to-run bash script (yt-dlp + ffmpeg) that produces the same file.
+
+  Only download content you have the rights to.
 - **Continuous playback** — clips play in sequence with prev / next / pause
   controls, a clip-relative progress bar, and an optional loop mode.
 - **Saved automatically** — your mixtape persists in the browser
@@ -38,6 +43,25 @@ It's a fully static site — no build step, no dependencies.
 - Open `index.html` in a browser, or serve the folder:
   `python3 -m http.server` and visit <http://localhost:8000>.
 - Or use the GitHub Pages deployment (see below).
+
+## Direct MP3 / MP4 downloads
+
+The web app can't rip media out of YouTube itself, but it automatically talks
+to a small helper server when one is running on your machine:
+
+```sh
+pip install yt-dlp          # plus ffmpeg from your package manager
+python3 server/mixtape_server.py
+```
+
+Keep it running (it listens on `http://127.0.0.1:8765`), open the app — local
+or the GitHub Pages site — and the ⬇ MP3 / ⬇ MP4 buttons now download the
+finished `mixtape.mp3` / `mixtape.mp4` directly. Long mixtapes take a few
+minutes; watch the helper's terminal for progress.
+
+Why a local helper instead of a hosted backend? YouTube blocks most
+cloud-server IPs, so downloads only work reliably from a residential machine —
+and this way your mixtape never leaves your computer.
 
 ## GitHub Pages
 
