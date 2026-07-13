@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MixTape Maker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📼</text></svg>">
+</head>
+<body>
+  <header class="app-header">
+    <h1>📼 MixTape Maker</h1>
+    <p class="tagline">Paste YouTube links, trim each one with timestamps, arrange the order — then press play on your medley.</p>
+  </header>
+
+  <main class="layout">
+    <!-- Left column: player -->
+    <section class="player-panel">
+      <div class="player-wrap">
+        <div id="player-placeholder" class="player-placeholder">
+          <span>▶ Your mixtape will play here</span>
+        </div>
+        <div id="player"></div>
+      </div>
+
+      <div class="now-playing" id="now-playing" hidden>
+        <div class="np-label">NOW PLAYING</div>
+        <div class="np-title" id="np-title">—</div>
+        <div class="np-progress">
+          <div class="np-progress-bar" id="np-progress-bar"></div>
+        </div>
+        <div class="np-times"><span id="np-elapsed">0:00</span><span id="np-duration">0:00</span></div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-prev" class="transport-btn" title="Previous track">⏮</button>
+        <button id="btn-play" class="transport-btn transport-play" title="Play / Pause">▶</button>
+        <button id="btn-next" class="transport-btn" title="Next track">⏭</button>
+        <label class="loop-toggle" title="Loop the whole mixtape">
+          <input type="checkbox" id="chk-loop"> 🔁 Loop
+        </label>
+      </div>
+    </section>
+
+    <!-- Right column: playlist builder -->
+    <section class="builder-panel">
+      <form id="add-form" class="add-form" autocomplete="off">
+        <div class="add-row">
+          <input type="text" id="input-url" placeholder="Paste a YouTube URL (e.g. https://youtu.be/dQw4w9WgXcQ?t=43)" required>
+          <button type="submit" class="btn-add">+ Add</button>
+        </div>
+        <div class="add-row add-row-times">
+          <label>Start <input type="text" id="input-start" placeholder="0:00" inputmode="numeric"></label>
+          <label>End <input type="text" id="input-end" placeholder="(video end)" inputmode="numeric"></label>
+          <span class="hint">Times as <code>m:ss</code>, <code>h:mm:ss</code> or plain seconds. A <code>?t=</code> in the URL is picked up automatically.</span>
+        </div>
+        <div id="add-error" class="add-error" hidden></div>
+      </form>
+
+      <div class="playlist-header">
+        <h2>Tracklist <span id="track-count" class="track-count"></span></h2>
+        <div class="playlist-actions">
+          <button id="btn-share" class="btn-small" title="Copy a shareable link to this mixtape">🔗 Share</button>
+          <button id="btn-clear" class="btn-small btn-danger" title="Remove all tracks">🗑 Clear</button>
+        </div>
+      </div>
+
+      <ol id="playlist" class="playlist"></ol>
+      <div id="empty-state" class="empty-state">
+        <p>No tracks yet — paste a YouTube link above to start your mixtape.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    Mixtapes are saved in your browser automatically. Use <strong>Share</strong> to get a link that carries the whole tracklist.
+  </footer>
+
+  <template id="track-template">
+    <li class="track" draggable="true">
+      <div class="track-grip" title="Drag to reorder">⠿</div>
+      <div class="track-index"></div>
+      <img class="track-thumb" alt="">
+      <div class="track-info">
+        <div class="track-title"></div>
+        <div class="track-times">
+          <label>start <input class="edit-start" type="text" inputmode="numeric"></label>
+          <label>end <input class="edit-end" type="text" inputmode="numeric" placeholder="end"></label>
+          <span class="track-duration"></span>
+        </div>
+      </div>
+      <div class="track-buttons">
+        <button class="btn-icon btn-play-track" title="Play from this track">▶</button>
+        <button class="btn-icon btn-up" title="Move up">↑</button>
+        <button class="btn-icon btn-down" title="Move down">↓</button>
+        <button class="btn-icon btn-remove" title="Remove">✕</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
