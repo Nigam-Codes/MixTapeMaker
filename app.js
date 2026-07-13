@@ -510,9 +510,20 @@ async function checkHelper() {
   }
   const label = helperAvailable
     ? "Direct download via the local helper"
-    : "Downloads a yt-dlp script (run the local helper for direct files)";
+    : "Downloads a yt-dlp script (set up the helper above for direct files)";
   document.getElementById("btn-export-mp3").title = `${label} — MP3`;
   document.getElementById("btn-export-mp4").title = `${label} — MP4`;
+  document.getElementById("helper-status").hidden = !helperAvailable;
+  document.getElementById("helper-banner").hidden = helperAvailable;
+}
+
+// Show the run command for the visitor's OS in the helper banner
+function localizeHelperInstructions() {
+  if (!/Windows/i.test(navigator.userAgent)) return;
+  document.getElementById("helper-cmd").textContent = "py mixtape_server.py";
+  document.getElementById("helper-fineprint").innerHTML =
+    "No Python? Get it free from the Microsoft Store, then reopen the terminal. " +
+    "Without the helper the buttons still work — they download a do-it-yourself script instead.";
 }
 
 async function directExport(kind) {
@@ -617,7 +628,7 @@ async function exportMixtape(kind) {
     }
   }
   downloadText(`make-mixtape-${kind}.sh`, buildExportScript(kind));
-  toast(`Script downloaded — run it with yt-dlp + ffmpeg to build mixtape.${kind}. For one-click downloads, run the local helper (see README).`);
+  toast(`Script downloaded — run it with yt-dlp + ffmpeg to build mixtape.${kind}. For one-click downloads, set up the helper (banner above the tracklist).`);
 }
 
 // ---------------------------------------------------------------------------
@@ -711,6 +722,7 @@ document.getElementById("btn-share").addEventListener("click", async () => {
 load();
 renderPlaylist();
 tracks.forEach(t => { if (t.title.startsWith("YouTube video (")) fetchTitle(t); });
+localizeHelperInstructions();
 checkHelper();
 setInterval(checkHelper, 15000);
 

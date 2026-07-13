@@ -47,17 +47,22 @@ It's a fully static site — no build step, no dependencies.
 ## Direct MP3 / MP4 downloads
 
 The web app can't rip media out of YouTube itself, but it automatically talks
-to a small helper server when one is running on your machine:
+to a small helper server when one is running on your machine. Setup is one
+file and one command (the app also walks you through this in the
+"⚡ Set up the helper" banner):
 
 ```sh
-pip install yt-dlp          # plus ffmpeg from your package manager
-python3 server/mixtape_server.py
+# Download server/mixtape_server.py (or use the in-app link), then:
+python3 mixtape_server.py           # Windows: py mixtape_server.py
 ```
 
-Keep it running (it listens on `http://127.0.0.1:8765`), open the app — local
-or the GitHub Pages site — and the ⬇ MP3 / ⬇ MP4 buttons now download the
-finished `mixtape.mp3` / `mixtape.mp4` directly. Long mixtapes take a few
-minutes; watch the helper's terminal for progress.
+No other installs: on first run the helper downloads standalone yt-dlp and
+ffmpeg builds into `~/.mixtape-helper/bin` automatically (it uses your system
+copies if you already have them). Keep it running (it listens on
+`http://127.0.0.1:8765`), open the app — local or the GitHub Pages site — and
+the ⬇ MP3 / ⬇ MP4 buttons now download the finished `mixtape.mp3` /
+`mixtape.mp4` directly. Long mixtapes take a few minutes; watch the helper's
+terminal for progress.
 
 Why a local helper instead of a hosted backend? YouTube blocks most
 cloud-server IPs, so downloads only work reliably from a residential machine —

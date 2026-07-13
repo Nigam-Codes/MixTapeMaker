@@ -67,6 +67,22 @@
         </div>
       </div>
 
+      <div id="helper-status" class="helper-status" hidden>
+        ✅ Helper connected — the ⬇ MP3 / ⬇ MP4 buttons download finished files directly.
+      </div>
+      <details id="helper-banner" class="helper-banner">
+        <summary>⚡ Want one-click MP3/MP4 downloads? <span class="helper-cta">Set up the helper (~30 s)</span></summary>
+        <ol class="helper-steps">
+          <li><a href="server/mixtape_server.py" download="mixtape_server.py">Download the helper</a> — one small Python file, nothing else to install.</li>
+          <li>Run it from a terminal in your Downloads folder: <code id="helper-cmd">python3 mixtape_server.py</code></li>
+          <li>First run fetches yt-dlp + ffmpeg automatically. Keep it running — this page connects by itself within ~15 seconds.</li>
+        </ol>
+        <p class="helper-fineprint" id="helper-fineprint">
+          Python comes preinstalled on macOS and Linux.
+          Without the helper the buttons still work — they download a do-it-yourself script instead.
+        </p>
+      </details>
+
       <ol id="playlist" class="playlist"></ol>
       <div id="empty-state" class="empty-state">
         <p>No tracks yet — paste a YouTube link above to start your mixtape.</p>

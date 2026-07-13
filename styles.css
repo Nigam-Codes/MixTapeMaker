@@ -399,6 +399,49 @@ body {
 .btn-remove { color: #c96d84; }
 .btn-remove:hover { color: #ff8ba0; background: #3a1f2c; }
 
+.helper-status {
+  background: rgba(61, 220, 151, 0.08);
+  border: 1px solid rgba(61, 220, 151, 0.4);
+  color: #7fe3b5;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+
+.helper-banner {
+  background: rgba(124, 92, 255, 0.07);
+  border: 1px solid rgba(124, 92, 255, 0.35);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+  color: var(--text-dim);
+}
+.helper-banner summary {
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+}
+.helper-banner summary::marker { color: var(--accent-2); }
+.helper-cta { color: var(--accent-2); text-decoration: underline; }
+.helper-steps {
+  margin: 10px 0 4px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.helper-steps a { color: var(--accent); }
+.helper-steps code {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--text);
+}
+.helper-fineprint { margin: 8px 0 2px; font-size: 0.72rem; }
+
 .empty-state {
   text-align: center;
   color: var(--text-dim);
