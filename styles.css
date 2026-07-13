@@ -310,6 +310,79 @@ body {
 .track-times input:focus { outline: 1px solid var(--accent-2); }
 .track-duration { color: var(--accent-2); }
 
+/* Dual-handle trim slider */
+.track-slider {
+  position: relative;
+  height: 22px;
+  margin-top: 6px;
+}
+.slider-rail {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel);
+}
+.slider-fill {
+  position: absolute;
+  top: 9px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  pointer-events: none;
+}
+.track-slider input[type="range"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none; /* only the thumbs are interactive */
+}
+.track-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  cursor: ew-resize;
+  margin-top: 0;
+}
+.track-slider input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  cursor: ew-resize;
+}
+.track-slider .range-start::-webkit-slider-thumb { border-color: var(--accent-2); }
+.track-slider .range-start::-moz-range-thumb { border-color: var(--accent-2); }
+.track-slider .range-start { z-index: 3; }
+.track-slider .range-end { z-index: 4; }
+.track-slider input[type="range"]:focus { outline: none; }
+.track-slider input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.4); }
+
+.probe-player {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  bottom: 0;
+  right: 0;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
 .track-buttons { display: flex; gap: 4px; flex: none; }
 .btn-icon {
   background: transparent;
@@ -323,7 +396,8 @@ body {
 }
 .btn-icon:hover { background: var(--panel); color: var(--text); }
 .btn-play-track:hover { color: var(--accent); }
-.btn-remove:hover { color: #ff8ba0; }
+.btn-remove { color: #c96d84; }
+.btn-remove:hover { color: #ff8ba0; background: #3a1f2c; }
 
 .empty-state {
   text-align: center;

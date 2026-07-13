@@ -13,7 +13,17 @@ mixtape.
   start time automatically.
 - **Timestamp control per clip** — set a start and end time for every track
   (`m:ss`, `h:mm:ss`, or plain seconds). Edit them inline any time.
-- **Order control** — drag and drop tracks, or use the ↑ / ↓ buttons.
+- **Trim slider** — every track gets a dual-handle slider between the video's
+  start and finish; drag the handles to pick the clip visually. (The video's
+  length is probed with a hidden muted player — no API key needed.)
+- **Order control** — drag and drop tracks, or use the ↑ / ↓ buttons; each
+  track has a 🗑 remove button.
+- **MP3 / MP4 export** — the ⬇ MP3 / ⬇ MP4 buttons download a ready-to-run
+  bash script (yt-dlp + ffmpeg) that fetches each clip at your exact
+  timestamps and stitches them into a single `mixtape.mp3` / `mixtape.mp4`.
+  Browsers can't extract media from YouTube directly (CORS + signed streams),
+  so the script runs on your machine instead. Only download content you have
+  the rights to.
 - **Continuous playback** — clips play in sequence with prev / next / pause
   controls, a clip-relative progress bar, and an optional loop mode.
 - **Saved automatically** — your mixtape persists in the browser

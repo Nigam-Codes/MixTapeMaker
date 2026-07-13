@@ -60,6 +60,8 @@
       <div class="playlist-header">
         <h2>Tracklist <span id="track-count" class="track-count"></span></h2>
         <div class="playlist-actions">
+          <button id="btn-export-mp3" class="btn-small" title="Export the mixtape as an MP3 (downloads a yt-dlp script)">⬇ MP3</button>
+          <button id="btn-export-mp4" class="btn-small" title="Export the mixtape as an MP4 (downloads a yt-dlp script)">⬇ MP4</button>
           <button id="btn-share" class="btn-small" title="Copy a shareable link to this mixtape">🔗 Share</button>
           <button id="btn-clear" class="btn-small btn-danger" title="Remove all tracks">🗑 Clear</button>
         </div>
@@ -73,8 +75,13 @@
   </main>
 
   <footer class="app-footer">
-    Mixtapes are saved in your browser automatically. Use <strong>Share</strong> to get a link that carries the whole tracklist.
+    Mixtapes are saved in your browser automatically. Use <strong>Share</strong> to get a link that carries the whole tracklist.<br>
+    <strong>⬇ MP3 / MP4</strong> downloads a ready-to-run script (yt-dlp + ffmpeg) that builds the file on your computer —
+    browsers can't extract media from YouTube directly. Only download content you have the rights to.
   </footer>
+
+  <!-- Hidden 1px player used only to read video durations for the sliders -->
+  <div id="probe" class="probe-player"></div>
 
   <template id="track-template">
     <li class="track" draggable="true">
@@ -88,12 +95,18 @@
           <label>end <input class="edit-end" type="text" inputmode="numeric" placeholder="end"></label>
           <span class="track-duration"></span>
         </div>
+        <div class="track-slider" hidden>
+          <div class="slider-rail"></div>
+          <div class="slider-fill"></div>
+          <input type="range" class="range-start" min="0" step="1" aria-label="Clip start">
+          <input type="range" class="range-end" min="0" step="1" aria-label="Clip end">
+        </div>
       </div>
       <div class="track-buttons">
         <button class="btn-icon btn-play-track" title="Play from this track">▶</button>
         <button class="btn-icon btn-up" title="Move up">↑</button>
         <button class="btn-icon btn-down" title="Move down">↓</button>
-        <button class="btn-icon btn-remove" title="Remove">✕</button>
+        <button class="btn-icon btn-remove" title="Remove from mixtape">🗑</button>
       </div>
     </li>
   </template>
