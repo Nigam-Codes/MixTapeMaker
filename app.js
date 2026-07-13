@@ -7,7 +7,7 @@
 
 const STORAGE_KEY = "mixtape.tracks.v1";
 
-/** @type {{uid:string, videoId:string, title:string, start:number, end:number|null}[]} */
+/** @type {{uid:string, videoId:string, title:string, start:number, end:number|null, duration:number|null}[]} */
 let tracks = [];
 let currentIndex = -1;      // index of the track loaded in the player
 let player = null;          // YT.Player instance
@@ -98,6 +98,7 @@ function load() {
   } catch {
     tracks = [];
   }
+  tracks.forEach(t => { if (!("duration" in t)) t.duration = null; });
 }
 
 // Hash format: #m=videoId.start.end~videoId.start.end (end empty = play to video end)
@@ -125,6 +126,7 @@ function makeTrack(videoId, start, end) {
     title: `YouTube video (${videoId})`,
     start: start || 0,
     end: end ?? null,
+    duration: null,
   };
 }
 
@@ -145,6 +147,57 @@ async function fetchTitle(track) {
 }
 
 // ---------------------------------------------------------------------------
+// Duration probing (hidden muted player — lets the trim sliders know each
+// video's length without needing a YouTube API key)
+// ---------------------------------------------------------------------------
+
+let probePlayer = null;
+let probeReady = false;
+let probeCurrent = null;
+let probeTimer = null;
+const probeQueue = [];
+
+function enqueueProbe(track) {
+  if (track.duration || probeQueue.includes(track) || probeCurrent === track) return;
+  probeQueue.push(track);
+  pumpProbe();
+}
+
+function pumpProbe() {
+  if (!probeReady || probeCurrent) return;
+  probeCurrent = probeQueue.shift() || null;
+  if (!probeCurrent) return;
+  try {
+    probePlayer.mute();
+    probePlayer.loadVideoById(probeCurrent.videoId);
+    probeTimer = setTimeout(finishProbe, 10000); // give up on slow/blocked videos
+  } catch {
+    finishProbe();
+  }
+}
+
+function onProbeStateChange(e) {
+  if (e.data !== YT.PlayerState.PLAYING || !probeCurrent) return;
+  const d = Math.floor(probePlayer.getDuration());
+  probePlayer.stopVideo();
+  if (d > 0) {
+    const t = probeCurrent;
+    t.duration = d;
+    if (t.start >= d) t.start = 0;
+    if (t.end != null && (t.end > d || t.end <= t.start)) t.end = null;
+    save();
+    renderPlaylist();
+  }
+  finishProbe();
+}
+
+function finishProbe() {
+  clearTimeout(probeTimer);
+  probeCurrent = null;
+  pumpProbe();
+}
+
+// ---------------------------------------------------------------------------
 // YouTube IFrame API
 // ---------------------------------------------------------------------------
 
@@ -157,6 +210,16 @@ window.onYouTubeIframeAPIReady = function () {
       onReady: () => { playerReady = true; },
       onStateChange: onPlayerStateChange,
       onError: () => { toast("This video can't be embedded — skipping."); next(); },
+    },
+  });
+  probePlayer = new YT.Player("probe", {
+    width: "1",
+    height: "1",
+    playerVars: { playsinline: 1, mute: 1 },
+    events: {
+      onReady: () => { probeReady = true; pumpProbe(); },
+      onStateChange: onProbeStateChange,
+      onError: finishProbe,
     },
   });
 };
@@ -242,6 +305,13 @@ function updateProgress() {
 // Playlist rendering + editing
 // ---------------------------------------------------------------------------
 
+function clipLength(t) {
+  const start = t.start || 0;
+  if (t.end != null && t.end > start) return t.end - start;
+  if (t.duration != null) return Math.max(0, t.duration - start);
+  return null;
+}
+
 function renderPlaylist() {
   const list = document.getElementById("playlist");
   const tpl = document.getElementById("track-template");
@@ -259,8 +329,10 @@ function renderPlaylist() {
     li.querySelector(".track-title").title = t.title;
     li.querySelector(".edit-start").value = formatTime(t.start) || "0:00";
     li.querySelector(".edit-end").value = t.end != null ? formatTime(t.end) : "";
-    li.querySelector(".track-duration").textContent =
-      t.end != null && t.end > (t.start || 0) ? `· ${formatTime(t.end - (t.start || 0))} clip` : "";
+    const len = clipLength(t);
+    li.querySelector(".track-duration").textContent = len != null ? `· ${formatTime(len)} clip` : "";
+
+    setupSlider(li, t);
 
     li.querySelector(".btn-play-track").addEventListener("click", () => playIndex(i));
     li.querySelector(".btn-up").addEventListener("click", () => moveTrack(i, i - 1));
@@ -268,7 +340,7 @@ function renderPlaylist() {
     li.querySelector(".btn-remove").addEventListener("click", () => removeTrack(i));
     li.querySelector(".edit-start").addEventListener("change", (e) => editTime(i, "start", e.target));
     li.querySelector(".edit-end").addEventListener("change", (e) => editTime(i, "end", e.target));
-    // Don't start a drag from the time inputs
+    // Don't start a drag from the inputs/sliders/buttons
     li.querySelectorAll("input, button").forEach(el => {
       el.addEventListener("mousedown", ev => ev.stopPropagation());
       el.addEventListener("dragstart", ev => ev.preventDefault());
@@ -276,11 +348,68 @@ function renderPlaylist() {
 
     addDragHandlers(li);
     list.appendChild(li);
+
+    if (t.duration == null) enqueueProbe(t);
   });
 
+  updateSummary();
+  document.getElementById("empty-state").classList.toggle("hidden", tracks.length > 0);
+}
+
+function updateSummary() {
   const n = tracks.length;
-  document.getElementById("track-count").textContent = n ? `· ${n} track${n === 1 ? "" : "s"}` : "";
-  document.getElementById("empty-state").classList.toggle("hidden", n > 0);
+  let total = 0, unknown = false;
+  tracks.forEach(t => {
+    const len = clipLength(t);
+    if (len == null) unknown = true; else total += len;
+  });
+  const totalStr = n && total > 0 ? ` · ${unknown ? "≥" : ""}${formatTime(total)}` : "";
+  document.getElementById("track-count").textContent = n ? `· ${n} track${n === 1 ? "" : "s"}${totalStr}` : "";
+}
+
+// Dual-handle trim slider: visible once the video's duration has been probed.
+function setupSlider(li, t) {
+  const wrap = li.querySelector(".track-slider");
+  if (t.duration == null) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+
+  const dur = t.duration;
+  const rs = li.querySelector(".range-start");
+  const re = li.querySelector(".range-end");
+  const fill = li.querySelector(".slider-fill");
+  rs.max = dur;
+  re.max = dur;
+  rs.value = Math.min(t.start || 0, dur);
+  re.value = t.end != null ? t.end : dur;
+
+  const sync = () => {
+    const s = +rs.value, e = +re.value;
+    fill.style.left = `${(s / dur) * 100}%`;
+    fill.style.width = `${((e - s) / dur) * 100}%`;
+    li.querySelector(".edit-start").value = formatTime(s);
+    li.querySelector(".edit-end").value = e >= dur ? "" : formatTime(e);
+    li.querySelector(".track-duration").textContent = `· ${formatTime(e - s)} clip`;
+  };
+  sync();
+
+  rs.addEventListener("input", () => {
+    if (+rs.value > +re.value - 1) rs.value = Math.max(0, +re.value - 1);
+    sync();
+  });
+  re.addEventListener("input", () => {
+    if (+re.value < +rs.value + 1) re.value = Math.min(dur, +rs.value + 1);
+    sync();
+  });
+  // Save without re-rendering: a rebuild would destroy the slider mid-drag
+  // (and drop focus during keyboard adjustment).
+  const commit = () => {
+    t.start = +rs.value;
+    t.end = +re.value >= dur ? null : +re.value;
+    save();
+    updateSummary();
+  };
+  rs.addEventListener("change", commit);
+  re.addEventListener("change", commit);
 }
 
 function moveTrack(from, to) {
@@ -312,6 +441,10 @@ function editTime(i, field, input) {
   }
   if (field === "start") t.start = val || 0;
   else t.end = val;
+  if (t.duration != null) {
+    if (t.start >= t.duration) t.start = 0;
+    if (t.end != null && t.end > t.duration) t.end = null;
+  }
   if (t.end != null && t.end <= (t.start || 0)) {
     toast("End time must be after start time.");
     t.end = null;
@@ -353,6 +486,83 @@ function addDragHandlers(li) {
 }
 
 // ---------------------------------------------------------------------------
+// Export (MP3 / MP4)
+//
+// A browser page can't pull media streams out of YouTube (CORS + signed
+// URLs), so export produces a ready-to-run bash script that uses yt-dlp +
+// ffmpeg to download each clip at its exact timestamps and stitch them into
+// a single mixtape file on the user's machine.
+// ---------------------------------------------------------------------------
+
+function sectionArg(t) {
+  const start = t.start || 0;
+  if (start === 0 && t.end == null) return "";
+  const end = t.end != null ? t.end : "inf";
+  return ` --download-sections "*${start}-${end}" --force-keyframes-at-cuts`;
+}
+
+function buildExportScript(kind) {
+  const isMp3 = kind === "mp3";
+  const lines = [
+    "#!/usr/bin/env bash",
+    `# MixTape Maker export — builds mixtape.${kind} from your tracklist.`,
+    "# Requires yt-dlp (https://github.com/yt-dlp/yt-dlp) and ffmpeg.",
+    "# Only download content you own or have permission to use.",
+    "set -euo pipefail",
+    "command -v yt-dlp >/dev/null || { echo 'yt-dlp is not installed'; exit 1; }",
+    "command -v ffmpeg >/dev/null || { echo 'ffmpeg is not installed'; exit 1; }",
+    "",
+    'mkdir -p mixtape_clips',
+    "",
+  ];
+
+  tracks.forEach((t, i) => {
+    const n = String(i + 1).padStart(2, "0");
+    lines.push(`# ${i + 1}. ${t.title.replace(/[\r\n]/g, " ")} (${formatTime(t.start)}${t.end != null ? "–" + formatTime(t.end) : "–end"})`);
+    if (isMp3) {
+      lines.push(`yt-dlp -x --audio-format mp3 --audio-quality 0${sectionArg(t)} -o "mixtape_clips/${n}.%(ext)s" "https://www.youtube.com/watch?v=${t.videoId}"`);
+    } else {
+      lines.push(`yt-dlp -f "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b"${sectionArg(t)} -o "mixtape_clips/${n}.%(ext)s" "https://www.youtube.com/watch?v=${t.videoId}"`);
+    }
+    lines.push("");
+  });
+
+  lines.push('echo "Stitching clips into one file..."');
+  if (isMp3) {
+    lines.push("ls mixtape_clips/*.mp3 | sort | sed \"s/.*/file '&'/\" > mixtape_concat.txt");
+    lines.push("ffmpeg -y -f concat -safe 0 -i mixtape_concat.txt -c:a libmp3lame -b:a 192k mixtape.mp3");
+    lines.push('echo "Done → mixtape.mp3 (individual clips are in mixtape_clips/)"');
+  } else {
+    lines.push("# Normalize every clip to the same size/fps/codecs so they concatenate cleanly");
+    lines.push("i=0");
+    lines.push("for f in $(ls mixtape_clips/*.mp4 | sort); do");
+    lines.push("  i=$((i+1))");
+    lines.push('  ffmpeg -y -i "$f" -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30" \\');
+    lines.push('    -c:v libx264 -preset veryfast -crf 20 -c:a aac -b:a 192k -ar 44100 "mixtape_clips/norm_$(printf %02d $i).mp4"');
+    lines.push("done");
+    lines.push("ls mixtape_clips/norm_*.mp4 | sed \"s/.*/file '&'/\" > mixtape_concat.txt");
+    lines.push("ffmpeg -y -f concat -safe 0 -i mixtape_concat.txt -c copy mixtape.mp4");
+    lines.push('echo "Done → mixtape.mp4 (individual clips are in mixtape_clips/)"');
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+function downloadText(filename, text) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportMixtape(kind) {
+  if (!tracks.length) { toast("Add some tracks first!"); return; }
+  downloadText(`make-mixtape-${kind}.sh`, buildExportScript(kind));
+  toast(`Script downloaded — run it with yt-dlp + ffmpeg installed to build mixtape.${kind}.`);
+}
+
+// ---------------------------------------------------------------------------
 // UI wiring
 // ---------------------------------------------------------------------------
 
@@ -370,7 +580,7 @@ function toast(msg) {
   el.textContent = msg;
   document.body.appendChild(el);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), 2600);
+  toastTimer = setTimeout(() => el.remove(), 3500);
 }
 
 document.getElementById("add-form").addEventListener("submit", (e) => {
@@ -414,6 +624,8 @@ document.getElementById("add-form").addEventListener("submit", (e) => {
 document.getElementById("btn-play").addEventListener("click", togglePlay);
 document.getElementById("btn-next").addEventListener("click", next);
 document.getElementById("btn-prev").addEventListener("click", prev);
+document.getElementById("btn-export-mp3").addEventListener("click", () => exportMixtape("mp3"));
+document.getElementById("btn-export-mp4").addEventListener("click", () => exportMixtape("mp4"));
 
 document.getElementById("btn-clear").addEventListener("click", () => {
   if (tracks.length && !confirm("Remove all tracks from this mixtape?")) return;
