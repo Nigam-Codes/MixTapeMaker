@@ -1,0 +1,84 @@
+name: Build helper binaries
+
+# Packages server/mixtape_server.py into standalone double-click executables
+# for Windows/macOS/Linux and publishes them on the "helper-latest" release.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - claude/youtube-mixtape-app-3ls926
+    paths:
+      - "server/**"
+      - ".github/workflows/build-helper.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            asset: MixTapeHelper-Windows.exe
+            built: dist/MixTapeHelper.exe
+          - os: macos-latest
+            asset: MixTapeHelper-macOS
+            built: dist/MixTapeHelper
+          - os: ubuntu-latest
+            asset: MixTapeHelper-Linux
+            built: dist/MixTapeHelper
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build
+        run: pyinstaller --onefile --name MixTapeHelper server/mixtape_server.py
+
+      - name: Rename asset
+        run: python -c "import shutil; shutil.move('${{ matrix.built }}', '${{ matrix.asset }}')"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Publish helper-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: helper-latest
+          name: MixTape Helper (standalone builds)
+          body: |
+            Standalone builds of the MixTape Maker helper — no Python needed.
+            Download the one for your OS, run it, keep it open, and the web app's
+            ⬇ MP3 / ⬇ MP4 buttons download finished mixtape files directly.
+
+            First-launch notes (the builds are unsigned):
+            - **Windows**: SmartScreen may warn — click "More info" → "Run anyway".
+            - **macOS**: right-click the file → Open (or allow it under System Settings → Privacy & Security). You may need `chmod +x` if run from a terminal.
+            - **Linux**: `chmod +x MixTapeHelper-Linux && ./MixTapeHelper-Linux`
+
+            Only download content you own or have permission to use.
+          files: MixTapeHelper-*
+          make_latest: true

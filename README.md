@@ -64,6 +64,16 @@ the ⬇ MP3 / ⬇ MP4 buttons now download the finished `mixtape.mp3` /
 `mixtape.mp4` directly. Long mixtapes take a few minutes; watch the helper's
 terminal for progress.
 
+### No Python at all? Use the standalone app
+
+Every change to `server/` is packaged by CI
+(`.github/workflows/build-helper.yml`) into double-click executables published
+on the [`helper-latest` release](https://github.com/Nigam-Codes/MixTapeMaker/releases/tag/helper-latest):
+`MixTapeHelper-Windows.exe`, `MixTapeHelper-macOS`, `MixTapeHelper-Linux`.
+Download yours, run it, keep it open — that's the whole setup. The builds are
+unsigned, so the first launch needs a nudge: Windows SmartScreen → "More info →
+Run anyway"; macOS → right-click → Open; Linux → `chmod +x` first.
+
 Why a local helper instead of a hosted backend? YouTube blocks most
 cloud-server IPs, so downloads only work reliably from a residential machine —
 and this way your mixtape never leaves your computer.

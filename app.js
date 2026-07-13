@@ -517,12 +517,15 @@ async function checkHelper() {
   document.getElementById("helper-banner").hidden = helperAvailable;
 }
 
-// Show the run command for the visitor's OS in the helper banner
+// Tailor the helper banner to the visitor's OS
 function localizeHelperInstructions() {
-  if (!/Windows/i.test(navigator.userAgent)) return;
+  const ua = navigator.userAgent;
+  const os = /Windows/i.test(ua) ? "win" : /Mac/i.test(ua) ? "mac" : /Linux|X11/i.test(ua) ? "linux" : null;
+  if (os) document.getElementById(`helper-dl-${os}`).classList.add("helper-os-match");
+  if (os !== "win") return;
   document.getElementById("helper-cmd").textContent = "py mixtape_server.py";
   document.getElementById("helper-fineprint").innerHTML =
-    "No Python? Get it free from the Microsoft Store, then reopen the terminal. " +
+    "No Python on Windows? Use the standalone app above, or get Python free from the Microsoft Store. " +
     "Without the helper the buttons still work — they download a do-it-yourself script instead.";
 }
 
